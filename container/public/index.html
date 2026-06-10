@@ -64,6 +64,7 @@ body{background:var(--bg);color:var(--fg);font-family:'Roboto',sans-serif;min-he
     <button class="tab active" onclick="switchTab('logs')">📋 Logs</button>
     <button class="tab" onclick="switchTab('admin')">⚙️ Admin</button>
     <button class="tab" onclick="switchTab('workspace')">📁 Workspace</button>
+    <button class="tab" onclick="switchTab('command')">⚡ Command</button>
   </div>
 
   <!-- Logs Tab -->
@@ -123,6 +124,56 @@ body{background:var(--bg);color:var(--fg);font-family:'Roboto',sans-serif;min-he
       </div>
       <div id="wsContent"><div class="spinner"></div> Loading...</div>
     </div>
+  </div>
+
+  <!-- Command Tab -->
+  <div id="tab-command" class="tab-content">
+    <div class="card">
+      <h2><span class="material-symbols-rounded">bolt</span> Run Command</h2>
+      <div class="controls" style="gap:8px">
+        <button onclick="requestCommand('openclaw status')">🔍 openclaw status</button>
+        <button onclick="requestCommand('openclaw doctor')">🩺 openclaw doctor</button>
+        <button onclick="requestCommand('openclaw gateway restart')">🔄 gateway restart</button>
+        <button onclick="requestCommand('podman ps -a')">🐳 podman ps</button>
+        <button onclick="requestCommand('git status')">📋 git status</button>
+        <button onclick="requestCommand('git log --oneline -10')">📋 git log</button>
+      </div>
+      <div class="controls">
+        <input type="text" id="customCmd" placeholder="Custom command..." style="flex:1">
+        <button onclick="requestCommand(document.getElementById('customCmd').value.trim())">▶️ Run</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2><span class="material-symbols-rounded">terminal</span> Output</h2>
+      <div class="log-viewer" id="cmdOutput" style="max-height:50vh"><div class="empty">Run a command to see output</div></div>
+    </div>
+    <div class="card">
+      <h2><span class="material-symbols-rounded">history</span> Command History</h2>
+      <div id="cmdHistory"><div class="empty">No commands executed yet</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- OTP Modal -->
+<div id="otpModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center" class="modal-overlay">
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:28px;padding:32px;max-width:400px;width:90%;box-shadow:0 8px 30px rgba(0,0,0,0.3);text-align:center">
+    <h3 style="margin-bottom:8px;font-size:18px">🔐 OTP Verification</h3>
+    <p style="color:var(--fg2);font-size:13px;margin-bottom:4px">Enter the 6-digit code sent to your Discord</p>
+    <p id="otpCmdLabel" style="color:var(--muted);font-size:12px;margin-bottom:20px"></p>
+    <div style="display:flex;gap:8px;justify-content:center;margin-bottom:20px" id="otpInputs">
+      <input maxlength="1" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="otp-digit">
+      <input maxlength="1" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="otp-digit">
+      <input maxlength="1" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="otp-digit">
+      <input maxlength="1" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="otp-digit">
+      <input maxlength="1" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="otp-digit">
+      <input maxlength="1" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="otp-digit">
+    </div>
+    <div style="display:flex;gap:12px;justify-content:center">
+      <button onclick="closeOTPModal()" style="padding:10px 24px;border:1px solid var(--border);background:transparent;color:var(--fg2);border-radius:24px;cursor:pointer;font-size:14px">Cancel</button>
+      <button id="otpVerifyBtn" onclick="verifyOTP()" style="padding:10px 24px;background:var(--primary-container);color:var(--primary);border:none;border-radius:24px;cursor:pointer;font-size:14px;font-weight:600">✅ Verify</button>
+    </div>
+    <div id="otpError" style="color:#F2B8B5;font-size:13px;margin-top:12px;display:none"></div>
+    <div id="otpSpinner" style="display:none;margin-top:12px"><div class="spinner"></div></div>
   </div>
 </div>
 
@@ -235,6 +286,110 @@ async function loadWorkspace(dir) {
     (data.items.length === 0 ? '<div class="empty">Empty directory</div>' : '') +
     '</div>';
 }
+
+// ===== Command Runner + OTP =====
+let pendingCmd = '';
+
+async function requestCommand(cmd) {
+  if (!cmd) return;
+  pendingCmd = cmd;
+  document.getElementById('otpCmdLabel').textContent = 'Command: ' + escapeHtml(cmd);
+  document.getElementById('otpError').style.display = 'none';
+  document.getElementById('otpVerifyBtn').disabled = false;
+  document.getElementById('otpInputs').querySelectorAll('.otp-digit').forEach(function(inp) { inp.value = ''; });
+  document.getElementById('otpModal').style.display = 'flex';
+  document.getElementById('otpInputs').querySelectorAll('.otp-digit')[0].focus();
+  
+  // Request OTP from backend
+  try {
+    const r = await fetch('/api/command/request', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ cmd: cmd })
+    });
+    const data = await r.json();
+    if (!data.otp_sent) {
+      showOTPError('Failed to send OTP');
+    }
+  } catch(e) {
+    showOTPError('Network error requesting OTP');
+  }
+}
+
+function showOTPError(msg) {
+  document.getElementById('otpError').textContent = msg;
+  document.getElementById('otpError').style.display = 'block';
+}
+
+function closeOTPModal() {
+  document.getElementById('otpModal').style.display = 'none';
+  pendingCmd = '';
+}
+
+async function verifyOTP() {
+  const inputs = document.getElementById('otpInputs').querySelectorAll('.otp-digit');
+  let otp = '';
+  inputs.forEach(function(inp) { otp += inp.value; });
+  if (otp.length !== 6) {
+    showOTPError('Please enter all 6 digits');
+    return;
+  }
+  document.getElementById('otpError').style.display = 'none';
+  document.getElementById('otpSpinner').style.display = 'block';
+  document.getElementById('otpVerifyBtn').disabled = true;
+  
+  try {
+    const r = await fetch('/api/command/verify', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ cmd: pendingCmd, otp: otp })
+    });
+    const data = await r.json();
+    if (r.status !== 200) {
+      showOTPError(data.error || 'Verification failed');
+      document.getElementById('otpVerifyBtn').disabled = false;
+      document.getElementById('otpSpinner').style.display = 'none';
+      return;
+    }
+    closeOTPModal();
+    document.getElementById('cmdOutput').innerHTML = '<div class="log-line"><span class="msg" style="color:#2ecc71">$ ' + escapeHtml(pendingCmd) + '</span></div>' +
+      '<div class="log-line"><span class="msg" style="color:' + (data.success ? 'var(--fg2)' : '#F2B8B5') + '">' + escapeHtml(data.output || '(no output)') + '</span></div>';
+    loadCmdHistory();
+  } catch(e) {
+    showOTPError('Network error');
+    document.getElementById('otpVerifyBtn').disabled = false;
+    document.getElementById('otpSpinner').style.display = 'none';
+  }
+}
+
+async function loadCmdHistory() {
+  try {
+    const data = await api('/api/command/history');
+    if (!Array.isArray(data) || data.length === 0) {
+      document.getElementById('cmdHistory').innerHTML = '<div class="empty">No commands executed yet</div>';
+      return;
+    }
+    document.getElementById('cmdHistory').innerHTML = data.map(function(c) {
+      return '<div class="cmd-box" style="padding:8px 12px;margin-bottom:6px"><div class="cmd" style="font-size:12px">$ ' + escapeHtml(c.cmd) + '</div><div class="output" style="font-size:11px;max-height:60px;overflow:hidden">' + escapeHtml(c.output || '(no output)').slice(0,200) + '</div></div>';
+    }).join('');
+  } catch(e) {}
+}
+
+// OTP digit auto-focus
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('otpInputs').addEventListener('input', function(e) {
+    if (e.target.classList.contains('otp-digit') && e.target.value) {
+      var next = e.target.nextElementSibling;
+      if (next && next.classList.contains('otp-digit')) next.focus();
+    }
+  });
+  document.getElementById('otpInputs').addEventListener('keydown', function(e) {
+    if (e.key === 'Backspace' && e.target.classList.contains('otp-digit') && !e.target.value) {
+      var prev = e.target.previousElementSibling;
+      if (prev && prev.classList.contains('otp-digit')) prev.focus();
+    }
+  });
+});
 
 // ===== Utils =====
 function escapeHtml(s) {

@@ -1,6 +1,7 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { execSync } = require('child_process');
 
 // ===== Native Windows paths =====
@@ -45,6 +46,81 @@ function runCmd(cmd) {
     return { success: false, output: e.stderr || e.message };
   }
 }
+
+// ===== OTP Store + Command History =====
+const otpStore = new Map();
+const cmdHistory = [];
+const OTP_EXPIRY_MS = 120000; // 2 minutes
+
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+function sendOTPviaDiscord(otp, cmd) {
+  console.log(`[OTP] Code: ${otp} for command: ${cmd}`);
+  // TODO: Send via Discord API to user
+  return true;
+}
+
+app.use(express.json());
+
+// POST /api/command/request
+app.post('/api/command/request', (req, res) => {
+  const { cmd } = req.body;
+  if (!cmd || typeof cmd !== 'string') {
+    return res.status(400).json({ error: 'Missing or invalid cmd' });
+  }
+  const otp = generateOTP();
+  otpStore.set(otp, { cmd, expiresAt: Date.now() + OTP_EXPIRY_MS });
+  sendOTPviaDiscord(otp, cmd);
+  console.log(`[OTP] Active OTPs: ${otpStore.size}`);
+  res.json({ otp_sent: true, expires_in: 120, message: 'OTP sent to your Discord' });
+});
+
+// POST /api/command/verify
+app.post('/api/command/verify', (req, res) => {
+  const { cmd, otp } = req.body;
+  if (!cmd || !otp) {
+    return res.status(400).json({ error: 'Missing cmd or otp' });
+  }
+  const stored = otpStore.get(otp);
+  if (!stored) {
+    return res.status(401).json({ error: 'Invalid OTP' });
+  }
+  if (Date.now() > stored.expiresAt) {
+    otpStore.delete(otp);
+    return res.status(401).json({ error: 'OTP expired' });
+  }
+  if (stored.cmd !== cmd) {
+    return res.status(400).json({ error: 'OTP does not match this command' });
+  }
+  otpStore.delete(otp);
+  const result = runCmd(cmd);
+  cmdHistory.unshift({ cmd, timestamp: new Date().toISOString(), success: result.success, output: result.output });
+  if (cmdHistory.length > 20) cmdHistory.pop();
+  res.json(result);
+});
+
+// GET /api/command/history
+app.get('/api/command/history', (req, res) => {
+  res.json(cmdHistory);
+});
+
+// GET /api/workspace/read
+app.get('/api/workspace/read', (req, res) => {
+  const filePath = req.query.path;
+  if (!filePath) return res.status(400).json({ error: 'Missing path' });
+  const resolved = path.resolve(WORKSPACE_DIR, filePath);
+  if (!resolved.startsWith(WORKSPACE_DIR)) {
+    return res.status(403).json({ error: 'Path outside workspace' });
+  }
+  try {
+    const content = fs.readFileSync(resolved, 'utf8');
+    res.json({ content, name: path.basename(resolved) });
+  } catch (e) {
+    res.status(404).json({ error: 'File not found' });
+  }
+});
 
 // ===== Static files =====
 app.use(express.static(path.join(__dirname, 'container', 'public')));
