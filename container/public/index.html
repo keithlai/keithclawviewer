@@ -398,6 +398,8 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
+function checkGatewayStatus(){fetch("/api/gateway/status").then(function(r){return r.json()}).then(function(d){document.getElementById("gwDot").style.background=d.color==="green"?"#2ecc71":"#666";document.getElementById("gwLabel").textContent=d.color==="green"?"Online":"Offline"}).catch(function(){document.getElementById("gwDot").style.background="#666";document.getElementById("gwLabel").textContent="Offline"})}
+
 // ===== Init =====
 loadLogFileList();
 loadOpsManual();

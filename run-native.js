@@ -64,6 +64,22 @@ function sendOTPviaDiscord(otp, cmd) {
 
 app.use(express.json());
 
+
+// ===== Gateway health check
+app.get('/api/gateway/status', (req, res) => {
+  const timeout = setTimeout(() => {
+    res.json({ status: 'offline', color: 'gray' });
+  }, 3000);
+  const r = require('http').get('http://localhost:18789/', { headers: { 'Authorization': '***4bfc7a8bebec20bcb1312f04eb21db016622923dff902701' } }, (rp) => {
+    clearTimeout(timeout);
+    res.json({ status: 'online', color: 'green' });
+  });
+  r.on('error', () => {
+    clearTimeout(timeout);
+    res.json({ status: 'offline', color: 'gray' });
+  });
+});
+
 // POST /api/command/request
 app.post('/api/command/request', (req, res) => {
   const { cmd } = req.body;
