@@ -4,13 +4,19 @@
 
 ## What Changes
 
-### 1. Command Runner
-- Add buttons to execute system commands:
+### 1. Command Runner (with OTP Security)
+- Add buttons to request system commands execution:
   - `openclaw status`
   - `openclaw gateway restart`
   - `openclaw doctor`
   - `podman ps` / `podman logs`
   - `git status`
+- **OTP Security Flow:**
+  1. User clicks command button → backend generates 6-digit OTP
+  2. Backend sends OTP via OpenClaw Discord DM to user
+  3. User receives OTP on Discord, inputs it in web UI
+  4. Backend verifies OTP → executes command → returns stdout/stderr
+- OTP expires after 2 minutes or after use
 - Real-time stdout/stderr display in terminal-like UI
 - Command history / previous outputs accessible
 - Running state indicator (spinner during execution)
@@ -26,7 +32,7 @@
 ## Capabilities
 
 ### New Capabilities
-- `command-runner`: Execute and display system commands with stdout/stderr
+- `command-runner`: Request command execution via OTP-authenticated flow. Backend generates 6-digit OTP, sends via Discord DM, user validates in UI before execution takes place.
 - `workspace-deep-browser`: Browse and preview agent workspace files
 
 ### Modified Capabilities
@@ -34,7 +40,7 @@
 
 ## Impact
 
-- Backend API: Add `/api/command/exec`, `/api/command/history`, `/api/workspace/read`
+- Backend API: Add `/api/command/request` (generates OTP + sends Discord DM), `/api/command/verify` (validates OTP + executes), `/api/command/history`, `/api/workspace/read`
 - Frontend: New "Command" tab + updated "Workspace" tab
 - server.js / run-native.js: Add new API routes
 - Material Design 3 UI: Update index.html with new tabs
