@@ -65,12 +65,12 @@ body{background:var(--bg);color:var(--fg);font-family:'Roboto',sans-serif;min-he
   <div id="loginOtpSection" style="display:none;flex-direction:column;align-items:center;gap:16px">
     <p style="color:var(--fg2);font-size:13px">Check your Discord DM for the 6-digit code</p>
     <div style="display:flex;gap:8px" id="loginOtpInputs">
-      <input maxlength="1" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="login-otp-digit" data-index="0">
-      <input maxlength="1" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="login-otp-digit" data-index="1">
-      <input maxlength="1" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="login-otp-digit" data-index="2">
-      <input maxlength="1" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="login-otp-digit" data-index="3">
-      <input maxlength="1" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="login-otp-digit" data-index="4">
-      <input maxlength="1" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="login-otp-digit" data-index="5">
+      <input maxlength="1" inputmode="numeric" pattern="[0-9]" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="login-otp-digit" data-index="0" autocomplete="one-time-code">
+      <input maxlength="1" inputmode="numeric" pattern="[0-9]" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="login-otp-digit" data-index="1">
+      <input maxlength="1" inputmode="numeric" pattern="[0-9]" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="login-otp-digit" data-index="2">
+      <input maxlength="1" inputmode="numeric" pattern="[0-9]" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="login-otp-digit" data-index="3">
+      <input maxlength="1" inputmode="numeric" pattern="[0-9]" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="login-otp-digit" data-index="4">
+      <input maxlength="1" inputmode="numeric" pattern="[0-9]" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="login-otp-digit" data-index="5">
     </div>
     <button id="loginVerifyBtn" onclick="verifyLoginOTP()" style="padding:10px 32px;background:var(--primary-container);color:var(--primary);border:none;border-radius:24px;cursor:pointer;font-size:14px;font-weight:600">🔐 Verify</button>
     <div id="loginError" style="color:#F2B8B5;font-size:13px;display:none"></div>
@@ -509,19 +509,34 @@ async function logout() {
   document.getElementById('loginSendOtpBtn').disabled = false;
 }
 
-// Auto-advance OTP digits for login
+// Auto-advance OTP digits for login — numbers only
 const loginInputs = document.getElementById('loginOtpInputs');
 if (loginInputs) {
   loginInputs.addEventListener('input', function(e) {
-    if (e.target.classList.contains('login-otp-digit') && e.target.value) {
-      const next = e.target.nextElementSibling;
-      if (next && next.classList.contains('login-otp-digit')) next.focus();
+    if (e.target.classList.contains('login-otp-digit')) {
+      // Strip non-numeric
+      e.target.value = e.target.value.replace(/\D/g, '');
+      if (e.target.value) {
+        const next = e.target.nextElementSibling;
+        if (next && next.classList.contains('login-otp-digit')) next.focus();
+      }
     }
   });
   loginInputs.addEventListener('keydown', function(e) {
-    if (e.key === 'Backspace' && e.target.classList.contains('login-otp-digit') && !e.target.value) {
+    const digit = e.target.classList.contains('login-otp-digit');
+    // Allow: backspace, tab, arrows, delete, home, end
+    const allowed = ['Backspace','Tab','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Delete','Home','End'];
+    if (allowed.includes(e.key)) return;
+    // Allow Ctrl+V, Ctrl+C, Ctrl+A, Ctrl+X
+    if (e.ctrlKey || e.metaKey) return;
+    // Block non-numeric
+    if (digit && !/^[0-9]$/.test(e.key)) {
+      e.preventDefault();
+    }
+    if (e.key === 'Backspace' && digit && !e.target.value) {
       const prev = e.target.previousElementSibling;
       if (prev && prev.classList.contains('login-otp-digit')) prev.focus();
+    }
     }
   });
 }
