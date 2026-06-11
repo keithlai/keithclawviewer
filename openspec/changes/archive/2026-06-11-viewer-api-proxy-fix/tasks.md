@@ -25,5 +25,5 @@
 
 - [x] 5.1 Git add + commit: books server fix
 - [x] 5.2 Git add + commit: viewer html fix
-- [ ] 5.3 Push to GitHub
-- [ ] 5.4 Run `openspec archive viewer-api-proxy-fix`
+- [x] 5.3 Push to GitHub
+- [x] 5.4 Run `openspec archive viewer-api-proxy-fix`

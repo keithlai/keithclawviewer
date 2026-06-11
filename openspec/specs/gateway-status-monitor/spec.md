@@ -9,10 +9,8 @@ TBD - created by archiving change config-log-viewer. Update Purpose after archiv
 #### Scenario: Any other response or fetch error → color: "grey", status: "Offline"
 
 ### Requirement: UI MUST show gateway status
-#### Scenario: App bar 顯示 status dot（8px circle）
-#### Scenario: Green (#2ecc71) = Online, Grey (#666) = Offline
-#### Scenario: Label 顯示 "Online" 或 "Offline"
-#### Scenario: Polling every 15s via setInterval
+#### Scenario: App bar 顯示 status dot 並正確反映 online/offline（經 proxy 修正）
+#### Scenario: Monitor tab 正確 load Podman Status 同 Ops Manual（switchTab fix）
 
 ### Requirement: Monitor Tab MUST show gateway + podman status
 #### Scenario: Admin tab 改名為 Monitor

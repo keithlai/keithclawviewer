@@ -1,10 +1,8 @@
 # api-routing Specification
 
 ## Purpose
-Ensure viewer API endpoints are correctly routed through books server and nginx reverse proxies so they reach the viewer (port 3000) instead of falling through to the gateway (port 18789) or 404.
-
-## ADDED Requirements
-
+TBD - created by archiving change viewer-api-proxy-fix. Update Purpose after archive.
+## Requirements
 ### Requirement: Books server MUST proxy viewer API routes
 #### Scenario: /api/gateway/* → proxy to localhost:3000
 #### Scenario: /api/logs → proxy to localhost:3000
@@ -22,3 +20,4 @@ Ensure viewer API endpoints are correctly routed through books server and nginx 
 ### Requirement: books server proxy MUST handle errors gracefully
 #### Scenario: Viewer unavailable → return 502 with JSON error message
 #### Scenario: Response headers include Content-Type application/json
+
