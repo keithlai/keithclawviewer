@@ -2,4 +2,8 @@ node_modules/
 *.key
 *.pem
 *.pfx
-.env
+.env*.log
+stdout.log
+stderr.log
+_fix_monitor.js
+node_modules/
