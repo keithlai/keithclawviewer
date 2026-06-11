@@ -58,8 +58,68 @@ function generateOTP() {
 
 function sendOTPviaDiscord(otp, cmd) {
   console.log(`[OTP] Code: ${otp} for command: ${cmd}`);
-  // TODO: Send via Discord API to user
-  return true;
+  try {
+    // Read Discord token from openclaw.json
+    const configPath = path.join(OPENCLAW_DIR, 'openclaw.json');
+    if (!fs.existsSync(configPath)) {
+      console.log('[OTP] Config not found, skipping Discord send');
+      return false;
+    }
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    const token = config.channels?.discord?.token;
+    if (!token) {
+      console.log('[OTP] No Discord token in config');
+      return false;
+    }
+    const targetUserId = '391967026329157643';
+    const https = require('https');
+    // Create DM channel
+    const dmReq = https.request({
+      hostname: 'discord.com',
+      path: '/api/v10/users/@me/channels',
+      method: 'POST',
+      headers: {
+        'Authorization': `Bot ${token}`,
+        'Content-Type': 'application/json'
+      }
+    }, dmRes => {
+      let data = '';
+      dmRes.on('data', c => data += c);
+      dmRes.on('end', () => {
+        try {
+          const dm = JSON.parse(data);
+          if (!dm.id) {
+            console.log('[OTP] Failed to create DM channel:', dm);
+            return;
+          }
+          // Send OTP message
+          const msgReq = https.request({
+            hostname: 'discord.com',
+            path: `/api/v10/channels/${dm.id}/messages`,
+            method: 'POST',
+            headers: {
+              'Authorization': `Bot ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }, msgRes => {
+            console.log(`[OTP] Discord send status: ${msgRes.statusCode}`);
+          });
+          msgReq.write(JSON.stringify({
+            content: `🔐 **OTP Code**: **${otp}**\n📝 Command: \`${cmd}\`\n⏰ Expires in 2 minutes`
+          }));
+          msgReq.end();
+        } catch (e) {
+          console.log('[OTP] Parse error:', e.message);
+        }
+      });
+    });
+    dmReq.write(JSON.stringify({ recipient_id: targetUserId }));
+    dmReq.end();
+    return true;
+  } catch (e) {
+    console.log('[OTP] Discord send error:', e.message);
+    return false;
+  }
 }
 
 app.use(express.json());
