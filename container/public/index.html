@@ -305,7 +305,7 @@ async function loadWorkspace(dir) {
       </div>`
     ).join('') +
     data.items.filter(i => i.type === 'file').map(i =>
-      `<div class="file-card">
+      `<div class="file-card" onclick="openFileViewer('${dir ? dir + '/' : ''}${i.name}')">
         <div class="name">📄 ${i.name}</div>
         <div class="meta">${(i.size/1024).toFixed(1)} KB</div>
       </div>`
@@ -508,6 +508,52 @@ async function logout() {
   document.getElementById('loginOtpSection').style.display = 'none';
   document.getElementById('loginSendOtpBtn').disabled = false;
 }
+
+// ===== File Viewer =====
+async function openFileViewer(path) {
+  document.getElementById('fileViewerTitle').textContent = path;
+  document.getElementById('fileViewerContent').innerHTML = '<div class="spinner"></div> Loading...';
+  document.getElementById('fileViewerModal').style.display = 'flex';
+  try {
+    var r = await fetch('/api/workspace/read?path=' + encodeURIComponent(path));
+    if (!r.ok) { document.getElementById('fileViewerContent').innerHTML = '<div style="color:#F2B8B5;padding:20px;text-align:center">Failed to load file</div>'; return; }
+    var d = await r.text();
+    // Auto-detect markdown: show pretty if .md file, else raw monospace
+    var isMarkdown = path.match(/\.(md|markdown)$/i);
+    if (isMarkdown) {
+      // Simple markdown rendering
+      var lines = d.split('\n');
+      var html = '';
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        if (line.startsWith('### ')) { html += '<h3>' + line.substring(4) + '</h3>'; }
+        else if (line.startsWith('## ')) { html += '<h2>' + line.substring(3) + '</h2>'; }
+        else if (line.startsWith('# ')) { html += '<h1>' + line.substring(2) + '</h1>'; }
+        else if (line.startsWith('- ') || line.startsWith('* ')) { html += '<li>' + line.substring(2) + '</li>'; }
+        else if (line.startsWith('> ')) { html += '<blockquote style="border-left:3px solid var(--primary);padding-left:12px;margin:8px 0;color:var(--fg2)">' + line.substring(2) + '</blockquote>'; }
+        else if (/^\d+\.\s/.test(line)) { html += '<li style="list-style-type:decimal;margin-left:20px">' + line.replace(/^\d+\.\s/,'') + '</li>'; }
+        else if (line.trim() === '---' || line.trim() === '***') { html += '<hr style="border:none;border-top:1px solid var(--border);margin:16px 0">'; }
+        else if (line.trim() === '') { html += '<br>'; }
+        else { html += '<p style="margin-bottom:8px">' + escapeHtml(line) + '</p>'; }
+      }
+      document.getElementById('fileViewerContent').innerHTML = '<div style="font-family:Georgia,Times New Roman,serif;line-height:1.85;font-size:15px">' + html + '</div>';
+    } else {
+      // Text or code: monospace
+      document.getElementById('fileViewerContent').innerHTML = '<pre style="font-family:JetBrains Mono,monospace;font-size:13px;line-height:1.6;white-space:pre-wrap;word-wrap:break-word;background:var(--bg2);padding:16px;border-radius:8px">' + escapeHtml(d) + '</pre>';
+    }
+  } catch(e) {
+    document.getElementById('fileViewerContent').innerHTML = '<div style="color:#F2B8B5;padding:20px;text-align:center">Error: ' + e.message + '</div>';
+  }
+}
+function closeFileViewer() {
+  document.getElementById('fileViewerModal').style.display = 'none';
+}
+
+// Escape HTML
+function escapeHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 
 // Auto-advance OTP digits for login — numbers only
 const loginInputs = document.getElementById('loginOtpInputs');
