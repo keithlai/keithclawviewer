@@ -524,19 +524,15 @@ if (loginInputs) {
   });
   loginInputs.addEventListener('keydown', function(e) {
     const digit = e.target.classList.contains('login-otp-digit');
-    // Allow: backspace, tab, arrows, delete, home, end
     const allowed = ['Backspace','Tab','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Delete','Home','End'];
     if (allowed.includes(e.key)) return;
-    // Allow Ctrl+V, Ctrl+C, Ctrl+A, Ctrl+X
     if (e.ctrlKey || e.metaKey) return;
-    // Block non-numeric
     if (digit && !/^[0-9]$/.test(e.key)) {
       e.preventDefault();
     }
     if (e.key === 'Backspace' && digit && !e.target.value) {
-      const prev = e.target.previousElementSibling;
+      var prev = e.target.previousElementSibling;
       if (prev && prev.classList.contains('login-otp-digit')) prev.focus();
-    }
     }
   });
 }
