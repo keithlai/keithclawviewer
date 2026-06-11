@@ -22,10 +22,10 @@
 - [x] 4.3 Test `/api/gateway/status` returns `{color:"green", status:"Online"}`
 - [x] 4.4 Open UI at `http://localhost:3000`, verify status dot shows green
 - [x] 4.5 Stop gateway, verify dot turns grey + label "Offline"
-- [ ] 4.6 Restart gateway, verify dot recovers to green within 15s
+- [x] 4.6 Restart gateway, verify dot recovers to green within 15s
 
 ## 5. Git & Archive
 
-- [ ] 5.1 Git add + commit all changes
-- [ ] 5.2 Push to GitHub
-- [ ] 5.3 Run `openspec archive config-log-viewer` to archive change and merge specs
+- [x] 5.1 Git add + commit all changes
+- [x] 5.2 Push to GitHub
+- [x] 5.3 Run `openspec archive config-log-viewer` to archive change and merge specs

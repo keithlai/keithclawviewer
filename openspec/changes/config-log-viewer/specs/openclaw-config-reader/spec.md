@@ -3,7 +3,7 @@
 ## Purpose
 Provide read-only API access to OpenClaw gateway configuration (`openclaw.json`) for remote debugging and inspection.
 
-## Requirements
+## ADDED Requirements
 
 ### Requirement: API MUST expose OpenClaw config as JSON
 #### Scenario: GET /api/openclaw/config 回傳 parsed openclaw.json

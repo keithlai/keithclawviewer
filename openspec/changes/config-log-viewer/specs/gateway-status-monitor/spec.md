@@ -3,7 +3,7 @@
 ## Purpose
 Monitor OpenClaw gateway (port 18789) health status and display online/offline indicator in the Viewer UI.
 
-## Requirements
+## ADDED Requirements
 
 ### Requirement: API MUST check gateway health
 #### Scenario: GET /api/gateway/status 回傳 { color: "green"|"grey", status: "Online"|"Offline" }
