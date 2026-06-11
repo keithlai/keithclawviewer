@@ -1,0 +1,12 @@
+podman : Cannot connect to Podman. Please verify your connection to the Linux system using `podman system connection li
+st`, or try `podman machine init` and `podman machine start` to manage a new Linux VM
+����λ�� ��:1 �ַ�: 1
++ podman ps -a 2>&1
++ ~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Cannot connect ... a new Linux VM:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Error: unable to connect to Podman socket: Get "http://d/v5.4.0/libpod/_ping": dial unix /run/podman/podman.sock: conne
+ct: A socket operation encountered a dead network.
+Too many arguments for this command.
+Try: openclaw doctor —fix --help

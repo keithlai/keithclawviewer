@@ -11,3 +11,35 @@
 [OTP] DM channel response status: 200
 [OTP] DM channel created: 1513037111769432165
 [OTP] Send status: 200 - {"type":0,"content":"\ud83d\udd10 **OTP Code**: **663179**\n\ud83d\udcdd Command
+[OTP] Code: 939266 for command: openclaw status
+[OTP] Token found: MTUxM...5kXc
+[OTP] Creating DM channel...
+[OTP] DM request sent
+[OTP] Active OTPs: 2
+[OTP] DM channel response status: 200
+[OTP] DM channel created: 1513037111769432165
+[OTP] Send status: 200 - {"type":0,"content":"\ud83d\udd10 **OTP Code**: **939266**\n\ud83d\udcdd Command
+[OTP] Code: 400891 for command: git status
+[OTP] Token found: MTUxM...5kXc
+[OTP] Creating DM channel...
+[OTP] DM request sent
+[OTP] Active OTPs: 2
+[OTP] DM channel response status: 200
+[OTP] DM channel created: 1513037111769432165
+[OTP] Send status: 200 - {"type":0,"content":"\ud83d\udd10 **OTP Code**: **400891**\n\ud83d\udcdd Command
+[OTP] Code: 670901 for command: Openclaw doctor —fix
+[OTP] Token found: MTUxM...5kXc
+[OTP] Creating DM channel...
+[OTP] DM request sent
+[OTP] Active OTPs: 2
+[OTP] DM channel response status: 200
+[OTP] DM channel created: 1513037111769432165
+[OTP] Send status: 200 - {"type":0,"content":"\ud83d\udd10 **OTP Code**: **670901**\n\ud83d\udcdd Command
+[OTP] Code: 437747 for command: dir
+[OTP] Token found: MTUxM...5kXc
+[OTP] Creating DM channel...
+[OTP] DM request sent
+[OTP] Active OTPs: 2
+[OTP] DM channel response status: 200
+[OTP] DM channel created: 1513037111769432165
+[OTP] Send status: 200 - {"type":0,"content":"\ud83d\udd10 **OTP Code**: **437747**\n\ud83d\udcdd Command

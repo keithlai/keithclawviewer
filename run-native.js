@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const cookieParser = require('cookie-parser');
 const { execSync } = require('child_process');
 
 // ===== Native Windows paths =====
@@ -46,6 +47,81 @@ function runCmd(cmd) {
     return { success: false, output: e.stderr || e.message };
   }
 }
+
+// ===== Session Store =====
+const SESSION_DURATION_MS = 30 * 60 * 1000; // 30 minutes
+const sessions = new Map(); // token -> {expiresAt}
+
+function createSession() {
+  const token = crypto.randomBytes(32).toString('hex');
+  sessions.set(token, { expiresAt: Date.now() + SESSION_DURATION_MS });
+  return token;
+}
+
+function validateSession(token) {
+  if (!token) return false;
+  const s = sessions.get(token);
+  if (!s) return false;
+  if (Date.now() > s.expiresAt) {
+    sessions.delete(token);
+    return false;
+  }
+  // Sliding expiry: reset on each valid request
+  s.expiresAt = Date.now() + SESSION_DURATION_MS;
+  return true;
+}
+
+function destroySession(token) {
+  sessions.delete(token);
+}
+
+// Cleanup expired sessions every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, s] of sessions) {
+    if (now > s.expiresAt) sessions.delete(token);
+  }
+}, 5 * 60 * 1000);
+
+// ===== Auth-safe path check =====
+const AUTH_PATHS = ['/api/auth/', '/login.html', '/'];
+function isAuthPath(p) {
+  return AUTH_PATHS.some(a => {
+    if (a === '/') return p === '/' || p === '/index.html' || p === '/login.html';
+    return p === a || p.startsWith(a);
+  });
+}
+
+// ===== Session Middleware =====
+function parseCookies(req) {
+  const raw = req.headers['cookie'];
+  if (!raw) return {};
+  const result = {};
+  raw.split(';').forEach(pair => {
+    const [k, ...v] = pair.trim().split('=');
+    result[k.trim()] = v.join('=');
+  });
+  return result;
+}
+
+app.use((req, res, next) => {
+  // Auth paths are always allowed
+  if (isAuthPath(req.path)) return next();
+  // Also allow auth API calls
+  if (req.path.startsWith('/api/auth/')) return next();
+  // Check session (manual cookie parse in case cookieParser hasn't run yet)
+  const cookies = parseCookies(req);
+  const token = req.cookies?.session || cookies.session;
+  if (token && validateSession(token)) {
+    return next();
+  }
+  // API calls get 401, page requests get redirect
+  if (req.path.startsWith('/api/')) {
+    return res.status(401).json({ error: 'Unauthorized', loginRequired: true });
+  }
+  // Redirect to login for page requests
+  res.redirect('/');
+});
 
 // ===== OTP Store + Command History =====
 const otpStore = new Map();
@@ -139,7 +215,53 @@ function sendOTPviaDiscord(otp, cmd) {
 }
 
 app.use(express.json());
+app.use(cookieParser());
 
+// ===== Auth Routes (before session middleware since they're on the allow list) =====
+
+// GET /api/auth/status — check if logged in
+app.get('/api/auth/status', (req, res) => {
+  const token = req.cookies?.session;
+  const valid = token && validateSession(token);
+  res.json({ authenticated: !!valid });
+});
+
+// POST /api/auth/send-otp — send OTP to Discord, no auto-send
+app.post('/api/auth/send-otp', (req, res) => {
+  const otp = generateOTP();
+  otpStore.set(otp, { cmd: 'login', expiresAt: Date.now() + OTP_EXPIRY_MS });
+  sendOTPviaDiscord(otp, 'Viewer Login');
+  res.json({ otp_sent: true, expires_in: 120, message: 'OTP sent to your Discord' });
+});
+
+// POST /api/auth/verify-otp — verify OTP, create session
+app.post('/api/auth/verify-otp', (req, res) => {
+  const { otp } = req.body;
+  if (!otp) return res.status(400).json({ error: 'Missing OTP' });
+  const stored = otpStore.get(otp);
+  if (!stored) return res.status(401).json({ error: 'Invalid OTP' });
+  if (Date.now() > stored.expiresAt) {
+    otpStore.delete(otp);
+    return res.status(401).json({ error: 'OTP expired' });
+  }
+  otpStore.delete(otp);
+  const sessionToken = createSession();
+  res.cookie('session', sessionToken, {
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: SESSION_DURATION_MS,
+    path: '/'
+  });
+  res.json({ authenticated: true, sessionToken });
+});
+
+// POST /api/auth/logout — clear session
+app.post('/api/auth/logout', (req, res) => {
+  const token = req.cookies?.session;
+  if (token) destroySession(token);
+  res.clearCookie('session', { path: '/' });
+  res.json({ loggedOut: true });
+});
 
 // ===== Gateway health check
 app.get('/api/gateway/status', (req, res) => {
@@ -216,6 +338,11 @@ app.get('/api/workspace/read', (req, res) => {
 
 // ===== Static files =====
 app.use(express.static(path.join(__dirname, 'container', 'public')));
+
+// ===== Root route: always serve index.html (login overlay handles auth UI) =====
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'container', 'public', 'index.html'));
+});
 
 // ===== API Routes =====
 app.get('/api/logs', (req, res) => {

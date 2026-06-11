@@ -52,11 +52,38 @@ body{background:var(--bg);color:var(--fg);font-family:'Roboto',sans-serif;min-he
 </head>
 <body>
 
+<!-- ===== Login Overlay ===== -->
+<div id="loginOverlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:24px">
+  <div style="font-size:64px;margin-bottom:8px">🦞</div>
+  <h2 style="font-size:24px;font-weight:600">KeithclawViewer</h2>
+  <p style="color:var(--fg2);font-size:14px;text-align:center;max-width:320px">
+    Sensitive content. Verify your identity with the OTP sent to your Discord.
+  </p>
+  <button id="loginSendOtpBtn" onclick="sendLoginOTP()" style="padding:12px 36px;background:var(--primary);color:#000;border:none;border-radius:24px;cursor:pointer;font-size:16px;font-weight:600">
+    📩 Send OTP to Discord
+  </button>
+  <div id="loginOtpSection" style="display:none;flex-direction:column;align-items:center;gap:16px">
+    <p style="color:var(--fg2);font-size:13px">Check your Discord DM for the 6-digit code</p>
+    <div style="display:flex;gap:8px" id="loginOtpInputs">
+      <input maxlength="1" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="login-otp-digit" data-index="0">
+      <input maxlength="1" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="login-otp-digit" data-index="1">
+      <input maxlength="1" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="login-otp-digit" data-index="2">
+      <input maxlength="1" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="login-otp-digit" data-index="3">
+      <input maxlength="1" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="login-otp-digit" data-index="4">
+      <input maxlength="1" style="width:44px;height:52px;text-align:center;font-size:22px;background:var(--bg2);border:2px solid var(--border);border-radius:12px;color:var(--fg);outline:none" class="login-otp-digit" data-index="5">
+    </div>
+    <button id="loginVerifyBtn" onclick="verifyLoginOTP()" style="padding:10px 32px;background:var(--primary-container);color:var(--primary);border:none;border-radius:24px;cursor:pointer;font-size:14px;font-weight:600">🔐 Verify</button>
+    <div id="loginError" style="color:#F2B8B5;font-size:13px;display:none"></div>
+    <div id="loginSpinner" style="display:none"><div class="spinner"></div></div>
+  </div>
+</div>
+
 <div class="app-bar">
   <span class="icon"><span class="material-symbols-rounded">visibility</span></span>
   <h1>🦞 龍蝦內視鏡</h1>
   <span class="badge" id="statusBadge"><span id="gwDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#666;margin-right:4px;vertical-align:middle"></span><span id="gwLabel">檢測中</span></span>
   <span class="badge">v1.0.0</span>
+  <button id="logoutBtn" onclick="logout()" style="display:none;background:transparent;border:1px solid var(--border);color:var(--fg2);padding:6px 14px;border-radius:20px;cursor:pointer;font-size:12px">Logout</button>
 </div>
 
 <div class="main">
@@ -408,8 +435,90 @@ var dot=document.getElementById('gwDot');
 var label=document.getElementById('gwLabel');
 dot.style.background='#666';label.textContent='Offline'})}
 
+// ===== Auth Logic =====
+let loginOTP = '';
+
+async function checkAuth() {
+  try {
+    const r = await fetch('/api/auth/status');
+    const d = await r.json();
+    if (d.authenticated) {
+      document.getElementById('loginOverlay').style.display = 'none';
+      document.getElementById('logoutBtn').style.display = 'inline-block';
+      loadLogFileList();loadOpsManual();checkGatewayStatus();setInterval(checkGatewayStatus,15000);
+    }
+  } catch {}
+}
+
+async function sendLoginOTP() {
+  document.getElementById('loginSendOtpBtn').disabled = true;
+  document.getElementById('loginSendOtpBtn').textContent = 'Sending...';
+  try {
+    const r = await fetch('/api/auth/send-otp', { method: 'POST' });
+    const d = await r.json();
+    if (d.otp_sent) {
+      document.getElementById('loginSendOtpBtn').style.display = 'none';
+      document.getElementById('loginOtpSection').style.display = 'flex';
+      document.getElementById('loginOtpInputs').querySelector('.login-otp-digit').focus();
+    }
+  } catch {}
+  document.getElementById('loginSendOtpBtn').disabled = false;
+}
+
+async function verifyLoginOTP() {
+  const otp = Array.from(document.querySelectorAll('.login-otp-digit')).map(i => i.value).join('');
+  if (otp.length !== 6) { showLoginError('Enter all 6 digits'); return; }
+  document.getElementById('loginSpinner').style.display = 'block';
+  document.getElementById('loginError').style.display = 'none';
+  try {
+    const r = await fetch('/api/auth/verify-otp', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({otp}) });
+    const d = await r.json();
+    if (d.authenticated) {
+      document.getElementById('loginOverlay').style.display = 'none';
+      document.getElementById('logoutBtn').style.display = 'inline-block';
+      loadLogFileList();loadOpsManual();checkGatewayStatus();setInterval(checkGatewayStatus,15000);
+    } else {
+      showLoginError(d.error || 'Verification failed');
+    }
+  } catch(e) { showLoginError('Network error'); }
+  document.getElementById('loginSpinner').style.display = 'none';
+}
+
+function showLoginError(msg) {
+  const el = document.getElementById('loginError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function logout() {
+  await fetch('/api/auth/logout', { method: 'POST' });
+  document.getElementById('loginOverlay').style.display = 'flex';
+  document.getElementById('logoutBtn').style.display = 'none';
+  document.getElementById('loginSendOtpBtn').style.display = 'inline-block';
+  document.getElementById('loginSendOtpBtn').textContent = '📩 Send OTP to Discord';
+  document.getElementById('loginOtpSection').style.display = 'none';
+  document.getElementById('loginSendOtpBtn').disabled = false;
+}
+
+// Auto-advance OTP digits for login
+const loginInputs = document.getElementById('loginOtpInputs');
+if (loginInputs) {
+  loginInputs.addEventListener('input', function(e) {
+    if (e.target.classList.contains('login-otp-digit') && e.target.value) {
+      const next = e.target.nextElementSibling;
+      if (next && next.classList.contains('login-otp-digit')) next.focus();
+    }
+  });
+  loginInputs.addEventListener('keydown', function(e) {
+    if (e.key === 'Backspace' && e.target.classList.contains('login-otp-digit') && !e.target.value) {
+      const prev = e.target.previousElementSibling;
+      if (prev && prev.classList.contains('login-otp-digit')) prev.focus();
+    }
+  });
+}
+
 // ===== Init =====
-loadLogFileList();loadOpsManual();checkGatewayStatus();setInterval(checkGatewayStatus,15000);
+checkAuth();
 </script>
 </body>
 </html>
