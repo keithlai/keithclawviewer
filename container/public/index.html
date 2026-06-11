@@ -185,7 +185,7 @@ function switchTab(name) {
   document.querySelector(`.tab[onclick*="'${name}'"]`).classList.add('active');
   document.getElementById('tab-' + name).classList.add('active');
   if (name === 'logs') loadLogFileList();
-  if (name === 'admin') { loadPodmanStatus(); loadOpsManual(); }
+  if (name === 'monitor') { loadPodmanStatus(); loadOpsManual(); }
   if (name === 'workspace') loadWorkspace();
 }
 
