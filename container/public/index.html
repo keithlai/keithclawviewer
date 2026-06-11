@@ -55,14 +55,14 @@ body{background:var(--bg);color:var(--fg);font-family:'Roboto',sans-serif;min-he
 <div class="app-bar">
   <span class="icon"><span class="material-symbols-rounded">visibility</span></span>
   <h1>🦞 龍蝦內視鏡</h1>
-  <span class="badge" id="statusBadge">● 連線中</span>
+  <span class="badge" id="statusBadge"><span id="gwDot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#666;margin-right:4px;vertical-align:middle"></span><span id="gwLabel">檢測中</span></span>
   <span class="badge">v1.0.0</span>
 </div>
 
 <div class="main">
   <div class="tab-bar">
     <button class="tab active" onclick="switchTab('logs')">📋 Logs</button>
-    <button class="tab" onclick="switchTab('admin')">⚙️ Admin</button>
+    <button class="tab" onclick="switchTab('monitor')">⚙️ Monitor</button>
     <button class="tab" onclick="switchTab('workspace')">📁 Workspace</button>
     <button class="tab" onclick="switchTab('command')">⚡ Command</button>
   </div>
@@ -96,8 +96,8 @@ body{background:var(--bg);color:var(--fg);font-family:'Roboto',sans-serif;min-he
     </div>
   </div>
 
-  <!-- Admin Tab -->
-  <div id="tab-admin" class="tab-content">
+  <!-- Monitor Tab -->
+  <div id="tab-monitor" class="tab-content">
     <div class="card">
       <h2><span class="material-symbols-rounded">pod</span> Podman Status</h2>
       <div class="cmd-box" id="podmanStatus"><div class="spinner"></div> Loading...</div>
@@ -230,7 +230,7 @@ async function refreshLog() {
   ).join('') || '<div class="empty">Empty file</div>';
 }
 
-// ===== Admin =====
+// ===== Monitor =====
 async function loadPodmanStatus() {
   const data = await api('/api/podman/ps');
   document.getElementById('podmanStatus').innerHTML =
@@ -398,11 +398,18 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
-function checkGatewayStatus(){fetch("/api/gateway/status").then(function(r){return r.json()}).then(function(d){document.getElementById("gwDot").style.background=d.color==="green"?"#2ecc71":"#666";document.getElementById("gwLabel").textContent=d.color==="green"?"Online":"Offline"}).catch(function(){document.getElementById("gwDot").style.background="#666";document.getElementById("gwLabel").textContent="Offline"})}
+function checkGatewayStatus(){
+fetch('/api/gateway/status').then(function(r){return r.json()}).then(function(d){
+var dot=document.getElementById('gwDot');
+var label=document.getElementById('gwLabel');
+if(d.color==='green'){dot.style.background='#2ecc71';label.textContent='Online'}
+else{dot.style.background='#666';label.textContent='Offline'}}).catch(function(){
+var dot=document.getElementById('gwDot');
+var label=document.getElementById('gwLabel');
+dot.style.background='#666';label.textContent='Offline'})}
 
 // ===== Init =====
-loadLogFileList();
-loadOpsManual();
+loadLogFileList();loadOpsManual();checkGatewayStatus();setInterval(checkGatewayStatus,15000);
 </script>
 </body>
 </html>
