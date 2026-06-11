@@ -1,0 +1,13 @@
+🦞 龍蝦內視鏡 Log Viewer running at:
+   http://localhost:3000
+   http://127.0.0.1:3000
+📁 Logs: C:\Users\Administrator\.openclaw\logs
+📁 Workspace: C:\Users\Administrator\workspace-dev
+[OTP] Code: 663179 for command: echo test123
+[OTP] Token found: MTUxM...5kXc
+[OTP] Creating DM channel...
+[OTP] DM request sent
+[OTP] Active OTPs: 1
+[OTP] DM channel response status: 200
+[OTP] DM channel created: 1513037111769432165
+[OTP] Send status: 200 - {"type":0,"content":"\ud83d\udd10 **OTP Code**: **663179**\n\ud83d\udcdd Command

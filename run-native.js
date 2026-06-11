@@ -56,24 +56,32 @@ function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+const OTP_LOG = path.join(OPENCLAW_DIR, 'logs', 'otp-send.log');
+function logOTP(msg) {
+  const t = new Date().toISOString();
+  try { fs.appendFileSync(OTP_LOG, `[${t}] ${msg}\n`); } catch {}
+  console.log(`[OTP] ${msg}`);
+}
+
 function sendOTPviaDiscord(otp, cmd) {
-  console.log(`[OTP] Code: ${otp} for command: ${cmd}`);
+  logOTP(`Code: ${otp} for command: ${cmd}`);
   try {
-    // Read Discord token from openclaw.json
     const configPath = path.join(OPENCLAW_DIR, 'openclaw.json');
     if (!fs.existsSync(configPath)) {
-      console.log('[OTP] Config not found, skipping Discord send');
+      logOTP('Config not found, skipping Discord send');
       return false;
     }
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     const token = config.channels?.discord?.token;
     if (!token) {
-      console.log('[OTP] No Discord token in config');
+      logOTP('No Discord token in config');
       return false;
     }
+    logOTP(`Token found: ${token.substring(0,5)}...${token.substring(token.length-4)}`);
     const targetUserId = '391967026329157643';
     const https = require('https');
     // Create DM channel
+    logOTP('Creating DM channel...');
     const dmReq = https.request({
       hostname: 'discord.com',
       path: '/api/v10/users/@me/channels',
@@ -86,12 +94,14 @@ function sendOTPviaDiscord(otp, cmd) {
       let data = '';
       dmRes.on('data', c => data += c);
       dmRes.on('end', () => {
+        logOTP(`DM channel response status: ${dmRes.statusCode}`);
         try {
           const dm = JSON.parse(data);
           if (!dm.id) {
-            console.log('[OTP] Failed to create DM channel:', dm);
+            logOTP(`Failed to create DM channel: ${JSON.stringify(dm)}`);
             return;
           }
+          logOTP(`DM channel created: ${dm.id}`);
           // Send OTP message
           const msgReq = https.request({
             hostname: 'discord.com',
@@ -102,22 +112,28 @@ function sendOTPviaDiscord(otp, cmd) {
               'Content-Type': 'application/json'
             }
           }, msgRes => {
-            console.log(`[OTP] Discord send status: ${msgRes.statusCode}`);
+            let m = '';
+            msgRes.on('data', c => m += c);
+            msgRes.on('end', () => {
+              logOTP(`Send status: ${msgRes.statusCode} - ${m.substring(0,80)}`);
+            });
           });
           msgReq.write(JSON.stringify({
             content: `🔐 **OTP Code**: **${otp}**\n📝 Command: \`${cmd}\`\n⏰ Expires in 2 minutes`
           }));
           msgReq.end();
         } catch (e) {
-          console.log('[OTP] Parse error:', e.message);
+          logOTP(`Parse error: ${e.message}`);
         }
       });
     });
+    dmReq.on('error', e => logOTP(`DM request error: ${e.message}`));
     dmReq.write(JSON.stringify({ recipient_id: targetUserId }));
     dmReq.end();
+    logOTP('DM request sent');
     return true;
   } catch (e) {
-    console.log('[OTP] Discord send error:', e.message);
+    logOTP(`Discord send error: ${e.message}`);
     return false;
   }
 }
