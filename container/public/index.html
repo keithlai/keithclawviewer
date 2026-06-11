@@ -451,18 +451,27 @@ async function checkAuth() {
 }
 
 async function sendLoginOTP() {
-  document.getElementById('loginSendOtpBtn').disabled = true;
-  document.getElementById('loginSendOtpBtn').textContent = 'Sending...';
+  var btn = document.getElementById('loginSendOtpBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
   try {
-    const r = await fetch('/api/auth/send-otp', { method: 'POST' });
-    const d = await r.json();
+    var r = await fetch('/api/auth/send-otp', { method: 'POST' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var d = await r.json();
     if (d.otp_sent) {
-      document.getElementById('loginSendOtpBtn').style.display = 'none';
+      btn.style.display = 'none';
       document.getElementById('loginOtpSection').style.display = 'flex';
       document.getElementById('loginOtpInputs').querySelector('.login-otp-digit').focus();
+    } else {
+      showLoginError(d.message || 'Failed to send OTP');
+      btn.textContent = '📩 Send OTP to Discord';
+      btn.disabled = false;
     }
-  } catch {}
-  document.getElementById('loginSendOtpBtn').disabled = false;
+  } catch(e) {
+    showLoginError('Cannot reach server: ' + e.message);
+    btn.textContent = '📩 Send OTP to Discord';
+    btn.disabled = false;
+  }
 }
 
 async function verifyLoginOTP() {
